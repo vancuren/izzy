@@ -28,7 +28,10 @@ export function ReasonOverlay({ events }: Props) {
     <div className="space-y-3">
       {/* Question */}
       {question && (
-        <div className="text-xs text-white/40 font-mono truncate">
+        <div
+          className="text-xs font-mono truncate tracking-wide"
+          style={{ color: 'var(--text-muted)' }}
+        >
           &ldquo;{question}&rdquo;
         </div>
       )}
@@ -36,8 +39,16 @@ export function ReasonOverlay({ events }: Props) {
       {/* Thinking indicator */}
       {isThinking && (
         <div className="flex items-center gap-2 py-3">
-          <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400/80 rounded-full animate-spin" />
-          <span className="text-xs text-white/40 animate-pulse">Reasoning...</span>
+          <div
+            className="w-4 h-4 border-2 rounded-full animate-spin"
+            style={{
+              borderColor: 'color-mix(in srgb, var(--accent-yellow) 30%, transparent)',
+              borderTopColor: 'color-mix(in srgb, var(--accent-yellow) 80%, transparent)',
+            }}
+          />
+          <span className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>
+            Reasoning...
+          </span>
         </div>
       )}
 
@@ -54,10 +65,15 @@ export function ReasonOverlay({ events }: Props) {
                 className="flex gap-2 animate-in fade-in slide-in-from-left-2"
                 style={{ animationDelay: `${i * 120}ms`, animationFillMode: 'both' }}
               >
-                <span className="text-xs text-yellow-400/60 font-mono shrink-0 mt-0.5">
+                <span
+                  className="text-xs font-mono shrink-0 mt-0.5"
+                  style={{ color: 'var(--accent-yellow)', opacity: 0.6 }}
+                >
                   {stepNum}.
                 </span>
-                <p className="text-xs text-white/60 leading-relaxed">{text}</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {text}
+                </p>
               </div>
             )
           })}
@@ -66,9 +82,17 @@ export function ReasonOverlay({ events }: Props) {
 
       {/* Conclusion */}
       {conclusionEvent?.type === 'tool_progress' && (
-        <div className="px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-400/10 animate-in fade-in">
-          <p className="text-xs text-yellow-200/70 font-medium mb-1">Conclusion</p>
-          <p className="text-xs text-white/70 leading-relaxed">
+        <div
+          className="px-3.5 py-2.5 rounded-xl border animate-in fade-in"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--accent-yellow) 5%, transparent)',
+            borderColor: 'color-mix(in srgb, var(--accent-yellow) 10%, transparent)',
+          }}
+        >
+          <p className="text-xs font-medium mb-1" style={{ color: 'var(--accent-yellow)', opacity: 0.7 }}>
+            Conclusion
+          </p>
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {conclusionEvent.data.text as string}
           </p>
         </div>
