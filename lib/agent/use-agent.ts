@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AgentContext, AgentEvent, transition, createInitialContext } from './state-machine'
 import { createSpeechRecognition, speak, createAudioAnalyser } from './speech'
+import type { ToolStreamEvent, ToolEvent } from '@/lib/tools/stream-types'
 
 const IDLE_TIMEOUT_MS = parseInt(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS ?? '300000', 10)
 
@@ -15,10 +16,16 @@ export interface BuilderStatus {
   error?: string
 }
 
+export interface ToolActivity {
+  activeTool: string | null
+  events: ToolEvent[]
+}
+
 export function useAgent() {
   const [ctx, setCtx] = useState<AgentContext>(createInitialContext)
   const [audioLevel, setAudioLevel] = useState(0)
   const [builderStatus, setBuilderStatus] = useState<BuilderStatus | null>(null)
+  const [toolActivity, setToolActivity] = useState<ToolActivity>({ activeTool: null, events: [] })
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const analyserRef = useRef<ReturnType<typeof createAudioAnalyser>>(null)
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -104,6 +111,85 @@ export function useAgent() {
     }, IDLE_TIMEOUT_MS)
   }, [dispatch])
 
+  // Parse SSE stream from chat API
+  const parseSSEStream = useCallback(
+    async (response: Response) => {
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      // Reset tool activity at start
+      setToolActivity({ activeTool: null, events: [] })
+
+      let finalData: {
+        text: string
+        buildId: string | null
+        pendingQuestion: string | null
+      } | null = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Parse complete SSE messages from buffer
+        const lines = buffer.split('\n')
+        buffer = ''
+
+        let currentEvent = ''
+        let currentData = ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            currentData = line.slice(6)
+          } else if (line === '' && currentEvent && currentData) {
+            // Complete SSE message
+            try {
+              const parsed = JSON.parse(currentData)
+
+              if (currentEvent === 'response') {
+                finalData = parsed
+              } else {
+                // Tool events (never 'response' type here)
+                const toolEvent = parsed as ToolEvent
+                setToolActivity((prev) => ({
+                  activeTool:
+                    toolEvent.type === 'tool_start'
+                      ? toolEvent.name
+                      : toolEvent.type === 'tool_result'
+                        ? null
+                        : prev.activeTool,
+                  events: [...prev.events, toolEvent],
+                }))
+              }
+            } catch {
+              // Ignore parse errors
+            }
+            currentEvent = ''
+            currentData = ''
+          } else if (line !== '') {
+            // Incomplete message, put back in buffer
+            buffer += line + '\n'
+          }
+        }
+
+        // If there's leftover partial data, keep it in buffer
+        if (currentEvent || currentData) {
+          if (currentEvent) buffer += `event: ${currentEvent}\n`
+          if (currentData) buffer += `data: ${currentData}\n`
+        }
+      }
+
+      return finalData
+    },
+    [],
+  )
+
   // Handle state side effects
   useEffect(() => {
     const handleStateChange = async () => {
@@ -144,16 +230,32 @@ export function useAgent() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body),
             })
-            const data = await res.json()
 
-            // If a build was triggered, subscribe to its progress
-            if (data.buildId) {
-              subscribeToBuild(data.buildId)
+            const data = await parseSSEStream(res)
+
+            if (data) {
+              // If a build was triggered, subscribe to its progress
+              if (data.buildId) {
+                subscribeToBuild(data.buildId)
+              }
+
+              dispatch({ type: 'RESPONSE_READY', text: data.text })
+
+              // Clear tool activity after a short delay
+              setTimeout(() => {
+                setToolActivity({ activeTool: null, events: [] })
+              }, 2000)
+            } else {
+              dispatch({
+                type: 'RESPONSE_READY',
+                text: "I'm having trouble connecting right now. Give me a moment.",
+              })
             }
-
-            dispatch({ type: 'RESPONSE_READY', text: data.response })
           } catch {
-            dispatch({ type: 'RESPONSE_READY', text: "I'm having trouble connecting right now. Give me a moment." })
+            dispatch({
+              type: 'RESPONSE_READY',
+              text: "I'm having trouble connecting right now. Give me a moment.",
+            })
           }
           break
         }
@@ -221,5 +323,6 @@ export function useAgent() {
     audioLevel,
     messages: ctx.messages,
     builderStatus,
+    toolActivity,
   }
 }

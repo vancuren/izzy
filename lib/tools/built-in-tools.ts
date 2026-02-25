@@ -1,5 +1,9 @@
 import type { BuiltInToolDef } from '@/lib/capabilities/types'
 import { executeCapability } from '@/lib/capabilities/executor'
+import { handleWebSearch } from './primitives/web-search'
+import { handleBrowserUse } from './primitives/browser-use'
+import { handleDeepMemory } from './primitives/deep-memory'
+import { handleReason } from './primitives/reason'
 
 export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
 
@@ -274,5 +278,92 @@ export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
         })),
       })
     },
+  },
+
+  // ─── web_search ──────────────────────────────────────────
+  {
+    definition: {
+      name: 'web_search',
+      description:
+        'Search the web for current information. Use when the user asks about recent events, facts you are unsure about, or anything that benefits from live web data.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          query: { type: 'string', description: 'Search query' },
+          max_results: {
+            type: 'number',
+            description: 'Max results to return (default 5)',
+          },
+        },
+        required: ['query'],
+      },
+    },
+    handler: handleWebSearch,
+  },
+
+  // ─── browser_use ─────────────────────────────────────────
+  {
+    definition: {
+      name: 'browser_use',
+      description:
+        'Browse to a URL and read its content. Use when the user asks you to read a webpage, article, or needs information from a specific URL.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          url: { type: 'string', description: 'URL to browse to' },
+          extract: {
+            type: 'string',
+            enum: ['full', 'summary'],
+            description: 'Extract full content or summary (default: summary)',
+          },
+        },
+        required: ['url'],
+      },
+    },
+    handler: handleBrowserUse,
+  },
+
+  // ─── deep_memory ─────────────────────────────────────────
+  {
+    definition: {
+      name: 'deep_memory',
+      description:
+        'Perform a thorough search through your memories about the user. Use when you need to recall detailed information, connect related memories, or the user asks "do you remember..." about something specific.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          query: {
+            type: 'string',
+            description: 'What to search for in memory',
+          },
+        },
+        required: ['query'],
+      },
+    },
+    handler: handleDeepMemory,
+  },
+
+  // ─── reason ──────────────────────────────────────────────
+  {
+    definition: {
+      name: 'reason',
+      description:
+        'Think through a complex question step by step before answering. Use for math, logic, planning, weighing options, or any question that benefits from careful reasoning rather than an immediate response.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          question: {
+            type: 'string',
+            description: 'The question or problem to reason about',
+          },
+          context: {
+            type: 'string',
+            description: 'Additional context from the conversation',
+          },
+        },
+        required: ['question'],
+      },
+    },
+    handler: handleReason,
   },
 ]

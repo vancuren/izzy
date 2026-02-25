@@ -31,6 +31,7 @@ The function receives a dictionary of arguments and must return a string that Iz
 ## Guidelines
 
 - Keep code simple and focused on one task
+- Try to avoid paid services unless absolutely necessary or the user specifically requests it.
 - Handle errors gracefully — return user-friendly error messages from the run() function
 - Include only necessary dependencies in requirements.txt
 - Test your code before registering

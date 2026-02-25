@@ -3,7 +3,14 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:docs.anthropic.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:e2b.dev)",
+      "WebFetch(domain:e2b.mintlify.app)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(tail:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Memory, CreateMemoryInput } from '@/lib/memory/store'
+import type { ToolStreamEvent } from '@/lib/tools/stream-types'
 
 // ── Capability Catalog Types ────────────────────────────────
 
@@ -50,6 +51,7 @@ export interface ToolContext {
     create: (input: CreateCapabilityInput) => Capability
     toAnthropicTool: (cap: Capability) => AnthropicTool
   }
+  onToolEvent?: (event: ToolStreamEvent) => void
 }
 
 // ── Agentic Loop Types ──────────────────────────────────────

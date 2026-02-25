@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { assembleTools } from './registry'
 import { executeToolCall } from './executor'
 import type { AgenticLoopResult, ToolCallRecord, ToolContext } from '@/lib/capabilities/types'
+import type { ToolStreamEvent } from './stream-types'
 
 const MAX_TOOL_ROUNDS = 10
 
@@ -10,11 +11,15 @@ export async function runAgenticLoop(
   systemPrompt: string,
   messages: Anthropic.Messages.MessageParam[],
   toolContext: ToolContext,
+  onToolEvent?: (event: ToolStreamEvent) => void,
 ): Promise<AgenticLoopResult> {
   const tools = assembleTools(toolContext)
   const toolCalls: ToolCallRecord[] = []
   let pendingQuestion: string | null = null
   let buildId: string | null = null
+
+  // Inject onToolEvent into the toolContext so individual handlers can emit progress
+  const ctxWithEmit = { ...toolContext, onToolEvent: onToolEvent }
 
   // Working copy of messages that accumulates tool_use/tool_result blocks
   const workingMessages: Anthropic.Messages.MessageParam[] = [...messages]
@@ -53,13 +58,16 @@ export async function runAgenticLoop(
       let resultContent: string
       let isError = false
 
+      // Emit tool_start
+      onToolEvent?.({ type: 'tool_start', name: block.name, input })
+
       try {
         // Special handling for ask_user: short-circuit the loop
         if (block.name === 'ask_user') {
           pendingQuestion = (input.question as string) ?? 'Could you tell me more?'
           resultContent = '[Waiting for user response]'
         } else {
-          resultContent = await executeToolCall(block.name, input, toolContext)
+          resultContent = await executeToolCall(block.name, input, ctxWithEmit)
 
           // Check if request_capability was called — extract buildId for the caller
           if (block.name === 'request_capability') {
@@ -77,6 +85,9 @@ export async function runAgenticLoop(
         resultContent = err instanceof Error ? err.message : String(err)
         isError = true
       }
+
+      // Emit tool_result
+      onToolEvent?.({ type: 'tool_result', name: block.name, result: resultContent, isError })
 
       toolCalls.push({ name: block.name, input, result: resultContent, isError })
       toolResults.push({

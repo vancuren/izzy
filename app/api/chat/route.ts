@@ -3,6 +3,7 @@ import { getRelevantMemories, createMemory, decayMemories } from '@/lib/memory/s
 import { listCapabilities } from '@/lib/capabilities/catalog'
 import { runAgenticLoop } from '@/lib/tools/agentic-loop'
 import { createToolContext } from '@/lib/tools/context'
+import type { ToolStreamEvent } from '@/lib/tools/stream-types'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -10,9 +11,15 @@ export const runtime = 'nodejs'
 
 const BASE_SYSTEM_PROMPT = `You are Izzy, a friendly and perceptive AI voice companion. You speak naturally and conversationally, like a thoughtful friend. Keep responses concise (1-3 sentences) since they'll be spoken aloud. Be warm but not saccharine. Match the user's energy.
 
-You have access to tools. Use them when the user's request requires looking up, creating, or executing capabilities, or when you need to store/recall specific information. For simple conversation, just respond directly without tools.
+You have core capabilities:
+- web_search: Search the web for current information, news, facts
+- browser_use: Read content from a specific URL
+- deep_memory: Deep search your memories about the user
+- reason: Think step-by-step through complex questions
 
-When you don't have a capability the user needs, use request_capability to build one. Let the user know you're working on it.`
+You also have tools for managing capabilities (lookup, request, execute) and memory (store, recall).
+
+Use these naturally. For simple conversation, respond directly. For questions about current events, search the web. For URLs, browse them. For complex questions, reason through them. For personal details about the user, check your deep memory. When you don't have a capability the user needs, use request_capability to build one. Let the user know you're working on it.`
 
 const IDLE_PROMPT = `The user has been quiet for a while. Based on the conversation so far and any memories you have, generate a brief, natural prompt to re-engage them. If there's no prior conversation, say something friendly and open-ended. Keep it to 1-2 sentences. Do NOT say "are you still there" or anything robotic.`
 
@@ -24,6 +31,10 @@ function buildSystemPrompt(memoryContext: string, capabilitySummary: string, isI
     prompt += `\n\n${IDLE_PROMPT}`
   }
   return prompt
+}
+
+function sseEncode(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 }
 
 export async function POST(req: Request) {
@@ -58,62 +69,90 @@ export async function POST(req: Request) {
     ? [{ role: 'user' as const, content: '[The conversation is just starting. Say something to engage the user.]' }]
     : apiMessages
 
-  try {
-    const toolContext = createToolContext(messages)
+  const encoder = new TextEncoder()
 
-    const result = await runAgenticLoop(
-      client,
-      systemContent,
-      finalMessages,
-      toolContext,
-    )
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const toolContext = createToolContext(messages)
 
-    // If a capability build was requested, trigger the builder
-    if (result.buildId) {
-      triggerBuilder(result.buildId, result.toolCalls).catch(console.error)
-    }
+        const onToolEvent = (event: ToolStreamEvent) => {
+          controller.enqueue(encoder.encode(sseEncode(event.type, event)))
+        }
 
-    // Async memory extraction (fire and forget)
-    extractMemories(messages.slice(-4)).catch(console.error)
+        const result = await runAgenticLoop(
+          client,
+          systemContent,
+          finalMessages,
+          toolContext,
+          onToolEvent,
+        )
 
-    return Response.json({
-      response: result.text,
-      toolCalls: result.toolCalls,
-      pendingQuestion: result.pendingQuestion,
-      buildId: result.buildId,
-    })
-  } catch (error) {
-    console.error('Claude API error:', error)
-    return Response.json(
-      { response: "I'm having a moment. Let me gather my thoughts." },
-      { status: 500 }
-    )
-  }
+        // If a capability build was requested, trigger the builder
+        if (result.buildId) {
+          triggerBuilder(result.buildId, result.toolCalls).catch(console.error)
+        }
+
+        // Async memory extraction (fire and forget)
+        extractMemories(messages.slice(-4)).catch(console.error)
+
+        // Send final response
+        controller.enqueue(
+          encoder.encode(
+            sseEncode('response', {
+              text: result.text,
+              buildId: result.buildId,
+              pendingQuestion: result.pendingQuestion,
+              toolCalls: result.toolCalls,
+            }),
+          ),
+        )
+      } catch (error) {
+        console.error('Claude API error:', error)
+        controller.enqueue(
+          encoder.encode(
+            sseEncode('response', {
+              text: "I'm having a moment. Let me gather my thoughts.",
+              buildId: null,
+              pendingQuestion: null,
+              toolCalls: [],
+            }),
+          ),
+        )
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  })
 }
 
 async function triggerBuilder(
   buildId: string,
   toolCalls: Array<{ name: string; input: Record<string, unknown>; result: string }>,
 ) {
-  // Find the request_capability tool call to get the description
   const requestCall = toolCalls.find((tc) => tc.name === 'request_capability')
   if (!requestCall) return
 
   const description = requestCall.input.description as string
   const name = requestCall.input.name as string
 
-  try {
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'}/api/builder`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        buildId,
-        description: `Build a capability called "${name}": ${description}`,
-      }),
-    })
-  } catch (err) {
-    console.error('Failed to trigger builder:', err)
-  }
+  // Dynamic import to avoid loading e2b at module init time
+  const { runBuilderLoop } = await import('@/lib/builder/agent-loop')
+
+  runBuilderLoop({
+    buildId,
+    description: `Build a capability called "${name}": ${description}`,
+  }).catch((err) => {
+    console.error('Builder loop failed:', err)
+  })
 }
 
 async function extractMemories(recentMessages: Array<{ role: string; content: string }>) {

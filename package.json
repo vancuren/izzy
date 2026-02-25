@@ -11,7 +11,9 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@e2b/code-interpreter": "^2.3.3",
+    "@mozilla/readability": "^0.6.0",
     "better-sqlite3": "^12.6.2",
+    "linkedom": "^0.18.12",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
