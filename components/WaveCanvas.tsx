@@ -19,12 +19,13 @@ export function WaveCanvas({ state, audioLevel }: WaveCanvasProps) {
     if (!canvasRef.current) return
     const renderer = new WaveRenderer(canvasRef.current)
     rendererRef.current = renderer
-    renderer.setConfig(theme === 'dark' ? DARK_CONFIG : LIGHT_CONFIG)
+    // Config is set by the [theme] effect below
     renderer.start()
 
     return () => {
       renderer.stop()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // React to theme changes

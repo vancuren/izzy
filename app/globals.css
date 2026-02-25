@@ -132,7 +132,9 @@ body {
   .fade-in,
   .slide-in-from-bottom-2,
   .slide-in-from-left-2,
-  .animate-pulse-dot {
+  .animate-pulse-dot,
+  .animate-spin,
+  .animate-pulse {
     animation: none !important;
     transition: none !important;
   }

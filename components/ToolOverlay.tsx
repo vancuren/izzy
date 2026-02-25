@@ -94,6 +94,7 @@ export function ToolOverlay({ toolActivity, builderStatus }: Props) {
           </div>
           <button
             onClick={() => setDismissed(true)}
+            aria-label="Close tool overlay"
             className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-200
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-violet)]"
             style={{ color: 'var(--text-faint)' }}
