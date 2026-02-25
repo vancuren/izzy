@@ -6,9 +6,19 @@ import { createSpeechRecognition, speak, createAudioAnalyser } from './speech'
 
 const IDLE_TIMEOUT_MS = parseInt(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS ?? '300000', 10)
 
+export interface BuilderStatus {
+  buildId: string
+  state: 'building' | 'complete' | 'error'
+  step?: string
+  detail?: string
+  capabilityName?: string
+  error?: string
+}
+
 export function useAgent() {
   const [ctx, setCtx] = useState<AgentContext>(createInitialContext)
   const [audioLevel, setAudioLevel] = useState(0)
+  const [builderStatus, setBuilderStatus] = useState<BuilderStatus | null>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const analyserRef = useRef<ReturnType<typeof createAudioAnalyser>>(null)
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -22,6 +32,50 @@ export function useAgent() {
 
   const dispatch = useCallback((event: AgentEvent) => {
     setCtx((prev) => transition(prev, event))
+  }, [])
+
+  // Subscribe to builder SSE when a build starts
+  const subscribeToBuild = useCallback((buildId: string) => {
+    setBuilderStatus({ buildId, state: 'building', step: 'Starting...' })
+
+    const evtSource = new EventSource(`/api/builder/status?buildId=${buildId}`)
+
+    evtSource.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        if (msg.msg_type === 'progress') {
+          setBuilderStatus({
+            buildId,
+            state: 'building',
+            step: msg.payload.step,
+            detail: msg.payload.detail,
+          })
+        } else if (msg.msg_type === 'complete') {
+          setBuilderStatus({
+            buildId,
+            state: 'complete',
+            capabilityName: msg.payload.capability_name,
+          })
+          evtSource.close()
+          // Clear after a few seconds
+          setTimeout(() => setBuilderStatus(null), 5000)
+        } else if (msg.msg_type === 'error') {
+          setBuilderStatus({
+            buildId,
+            state: 'error',
+            error: msg.payload.error,
+          })
+          evtSource.close()
+          setTimeout(() => setBuilderStatus(null), 8000)
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    evtSource.onerror = () => {
+      evtSource.close()
+    }
   }, [])
 
   // Audio level polling
@@ -91,6 +145,12 @@ export function useAgent() {
               body: JSON.stringify(body),
             })
             const data = await res.json()
+
+            // If a build was triggered, subscribe to its progress
+            if (data.buildId) {
+              subscribeToBuild(data.buildId)
+            }
+
             dispatch({ type: 'RESPONSE_READY', text: data.response })
           } catch {
             dispatch({ type: 'RESPONSE_READY', text: "I'm having trouble connecting right now. Give me a moment." })
@@ -160,5 +220,6 @@ export function useAgent() {
     state: ctx.state,
     audioLevel,
     messages: ctx.messages,
+    builderStatus,
   }
 }

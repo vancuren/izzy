@@ -4,7 +4,7 @@ import { WaveCanvas } from '@/components/WaveCanvas'
 import { useAgent } from '@/lib/agent/use-agent'
 
 export default function Home() {
-  const { state, audioLevel, messages } = useAgent()
+  const { state, audioLevel, messages, builderStatus } = useAgent()
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null
 
   return (
@@ -21,6 +21,40 @@ export default function Home() {
           <p className="text-white/70 text-lg leading-relaxed">
             {lastMessage.content}
           </p>
+        </div>
+      )}
+
+      {/* Builder status indicator */}
+      {builderStatus && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-10">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border ${
+            builderStatus.state === 'building'
+              ? 'bg-blue-500/10 border-blue-400/20'
+              : builderStatus.state === 'complete'
+              ? 'bg-green-500/10 border-green-400/20'
+              : 'bg-red-500/10 border-red-400/20'
+          }`}>
+            {builderStatus.state === 'building' && (
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            )}
+            {builderStatus.state === 'complete' && (
+              <div className="w-2 h-2 rounded-full bg-green-400" />
+            )}
+            {builderStatus.state === 'error' && (
+              <div className="w-2 h-2 rounded-full bg-red-400" />
+            )}
+            <span className="text-xs text-white/60 font-mono">
+              {builderStatus.state === 'building' && (
+                <>building: {builderStatus.step}{builderStatus.detail ? ` — ${builderStatus.detail}` : ''}</>
+              )}
+              {builderStatus.state === 'complete' && (
+                <>new capability: {builderStatus.capabilityName}</>
+              )}
+              {builderStatus.state === 'error' && (
+                <>build failed: {builderStatus.error}</>
+              )}
+            </span>
+          </div>
         </div>
       )}
 
