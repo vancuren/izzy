@@ -2,42 +2,38 @@
 
 import { useEffect, useRef } from 'react'
 import { WaveRenderer } from '@/lib/canvas/wave-renderer'
-import { AgentState, DARK_CONFIG, LIGHT_CONFIG } from '@/lib/canvas/types'
+import { DARK_CONFIG, LIGHT_CONFIG } from '@/lib/canvas/types'
+import { useTheme } from './ThemeProvider'
 
 interface WaveCanvasProps {
-  state: AgentState
+  state: string
   audioLevel: number
 }
 
 export function WaveCanvas({ state, audioLevel }: WaveCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<WaveRenderer | null>(null)
+  const { theme } = useTheme()
 
   useEffect(() => {
     if (!canvasRef.current) return
     const renderer = new WaveRenderer(canvasRef.current)
     rendererRef.current = renderer
-
-    // Check theme
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    renderer.setConfig(isDark ? DARK_CONFIG : LIGHT_CONFIG)
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (e: MediaQueryListEvent) => {
-      renderer.setConfig(e.matches ? DARK_CONFIG : LIGHT_CONFIG)
-    }
-    mediaQuery.addEventListener('change', handleChange)
-
+    renderer.setConfig(theme === 'dark' ? DARK_CONFIG : LIGHT_CONFIG)
     renderer.start()
 
     return () => {
       renderer.stop()
-      mediaQuery.removeEventListener('change', handleChange)
     }
   }, [])
 
+  // React to theme changes
   useEffect(() => {
-    rendererRef.current?.setState(state)
+    rendererRef.current?.setConfig(theme === 'dark' ? DARK_CONFIG : LIGHT_CONFIG)
+  }, [theme])
+
+  useEffect(() => {
+    rendererRef.current?.setState(state as import('@/lib/canvas/types').AgentState)
   }, [state])
 
   useEffect(() => {
