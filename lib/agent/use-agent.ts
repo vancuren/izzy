@@ -9,11 +9,16 @@ const IDLE_TIMEOUT_MS = parseInt(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS ?? '300
 
 export interface BuilderStatus {
   buildId: string
-  state: 'building' | 'complete' | 'error'
+  capabilityId?: string
+  state: 'building' | 'complete' | 'error' | 'secret_request'
   step?: string
   detail?: string
   capabilityName?: string
   error?: string
+  secretRequest?: {
+    name: string
+    description: string
+  }
 }
 
 export interface ToolActivity {
@@ -51,11 +56,22 @@ export function useAgent() {
       try {
         const msg = JSON.parse(event.data)
         if (msg.msg_type === 'progress') {
+          setBuilderStatus((prev) => ({
+            buildId,
+            capabilityId: prev?.capabilityId ?? (msg.payload.capabilityId as string | undefined),
+            state: 'building',
+            step: msg.payload.step as string,
+            detail: msg.payload.detail as string | undefined,
+          }))
+        } else if (msg.msg_type === 'secret_request') {
           setBuilderStatus({
             buildId,
-            state: 'building',
-            step: msg.payload.step,
-            detail: msg.payload.detail,
+            capabilityId: msg.payload.capabilityId as string,
+            state: 'secret_request',
+            secretRequest: {
+              name: msg.payload.name as string,
+              description: msg.payload.description as string,
+            },
           })
         } else if (msg.msg_type === 'complete') {
           setBuilderStatus({
