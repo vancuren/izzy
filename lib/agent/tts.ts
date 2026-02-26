@@ -94,11 +94,35 @@ async function speakWithElevenLabs(text: string): Promise<void> {
     const player = new StreamingAudioPlayer()
 
     try {
+      let leftover: Uint8Array | null = null
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        // value is a Uint8Array of raw PCM bytes
-        player.playChunk(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength))
+
+        // Prepend any leftover byte from the previous chunk
+        let chunk: Uint8Array
+        if (leftover) {
+          chunk = new Uint8Array(leftover.length + value.length)
+          chunk.set(leftover)
+          chunk.set(value, leftover.length)
+          leftover = null
+        } else {
+          chunk = value
+        }
+
+        // Int16 requires even byte count — save trailing byte for next chunk
+        if (chunk.byteLength % 2 !== 0) {
+          leftover = chunk.slice(-1)
+          chunk = chunk.slice(0, -1)
+        }
+
+        if (chunk.byteLength > 0) {
+          // Copy to a fresh ArrayBuffer to satisfy TypeScript (Uint8Array.buffer may be SharedArrayBuffer)
+          const aligned = new ArrayBuffer(chunk.byteLength)
+          new Uint8Array(aligned).set(chunk)
+          player.playChunk(aligned)
+        }
       }
       await player.waitForEnd()
     } finally {
