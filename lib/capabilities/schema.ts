@@ -39,7 +39,7 @@ export function initCapabilitySchema() {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       UNIQUE(capability_id, key),
-      FOREIGN KEY (capability_id) REFERENCES capabilities(id)
+      FOREIGN KEY (capability_id) REFERENCES capabilities(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS capability_storage (
@@ -50,7 +50,7 @@ export function initCapabilitySchema() {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       UNIQUE(capability_id, key),
-      FOREIGN KEY (capability_id) REFERENCES capabilities(id)
+      FOREIGN KEY (capability_id) REFERENCES capabilities(id) ON DELETE CASCADE
     );
 
     CREATE INDEX IF NOT EXISTS idx_capability_secrets_cap ON capability_secrets(capability_id);
@@ -60,6 +60,10 @@ export function initCapabilitySchema() {
   // Migrate builder_queue to support secret_request/secret_response msg types
   // SQLite can't ALTER CHECK constraints, so we recreate if needed
   try {
+    // Probe: if INSERT succeeds the CHECK constraint already allows the new
+    // msg_type values, so we DELETE the probe row and skip migration.
+    // If INSERT throws (CHECK fails), no row is committed and the catch
+    // block performs the full table recreation inside a transaction.
     db.exec(`
       INSERT INTO builder_queue (id, build_id, direction, msg_type, payload, read, created_at)
       VALUES ('__migration_test__', '__test__', 'to_user', 'secret_request', '{}', 1, 0)
@@ -68,6 +72,7 @@ export function initCapabilitySchema() {
   } catch {
     // CHECK constraint failed — need to migrate
     db.exec(`
+      BEGIN;
       ALTER TABLE builder_queue RENAME TO builder_queue_old;
       CREATE TABLE builder_queue (
         id TEXT PRIMARY KEY,
@@ -82,6 +87,7 @@ export function initCapabilitySchema() {
       DROP TABLE builder_queue_old;
       CREATE INDEX IF NOT EXISTS idx_builder_queue_build ON builder_queue(build_id, created_at);
       CREATE INDEX IF NOT EXISTS idx_builder_queue_unread ON builder_queue(build_id, direction, read);
+      COMMIT;
     `)
   }
 }
