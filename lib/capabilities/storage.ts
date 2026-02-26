@@ -37,11 +37,15 @@ export function getStorage(capabilityId: string): Record<string, unknown> {
   return result
 }
 
-export function setStorage(capabilityId: string, updates: Record<string, unknown>): void {
+const saveStorageTx = db.transaction((capabilityId: string, updates: Record<string, unknown>) => {
   const now = Date.now()
   for (const [key, value] of Object.entries(updates)) {
     stmts.upsert.run(uuid(), capabilityId, key, JSON.stringify(value), now, now)
   }
+})
+
+export function setStorage(capabilityId: string, updates: Record<string, unknown>): void {
+  saveStorageTx(capabilityId, updates)
 }
 
 export function deleteStorageKey(capabilityId: string, key: string): void {

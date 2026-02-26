@@ -36,8 +36,8 @@ export function getSecrets(capabilityId: string): Record<string, string> {
   for (const row of rows) {
     try {
       result[row.key] = decrypt(row.encrypted_value)
-    } catch {
-      // Skip corrupted secrets
+    } catch (err) {
+      console.error(`[secrets] Failed to decrypt key "${row.key}" for capability ${capabilityId}:`, err)
     }
   }
   return result
