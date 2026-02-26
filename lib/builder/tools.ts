@@ -56,6 +56,18 @@ export const BUILDER_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'request_secret',
+    description: 'Request a secret or API key from the user. This shows a secure paste input in the UI instead of asking via voice. Use this for API keys, tokens, passwords, or any sensitive credentials.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Secret name in UPPER_SNAKE_CASE (e.g., "OPENWEATHER_API_KEY")' },
+        description: { type: 'string', description: 'What this secret is for, so the user knows what to paste' },
+      },
+      required: ['name', 'description'],
+    },
+  },
+  {
     name: 'report_progress',
     description: 'Report build progress to the user. Call this at key milestones.',
     input_schema: {
@@ -86,6 +98,18 @@ export const BUILDER_TOOLS: Anthropic.Messages.Tool[] = [
           items: { type: 'string' },
           description: 'Tags for discoverability',
         },
+        required_secrets: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+            },
+            required: ['name', 'description'],
+          },
+          description: 'List of secrets this capability requires',
+        },
       },
       required: ['name', 'description', 'main_py', 'requirements_txt', 'input_schema'],
     },
@@ -96,6 +120,7 @@ export interface BuilderToolContext {
   sandbox: Sandbox
   buildId: string
   capabilityId?: string
+  catalogCapabilityId?: string
 }
 
 export async function handleBuilderToolCall(
@@ -132,6 +157,21 @@ export async function handleBuilderToolCall(
       return answer ?? 'No answer received from user (timed out).'
     }
 
+    case 'request_secret': {
+      const name = toolInput.name as string
+      const description = toolInput.description as string
+      pushMessage(ctx.buildId, 'to_user', 'secret_request', {
+        name,
+        description,
+        capabilityId: ctx.catalogCapabilityId,
+      })
+      const response = await waitForAnswer(ctx.buildId, 120_000)
+      if (response) {
+        return `Secret "${name}" has been saved by the user. Access it in your code via context['secrets']['${name}'].`
+      }
+      return `User did not provide the secret "${name}" within the timeout.`
+    }
+
     case 'report_progress': {
       pushMessage(ctx.buildId, 'to_user', 'progress', {
         step: toolInput.step as string,
@@ -161,6 +201,7 @@ export async function handleBuilderToolCall(
         description: toolInput.description,
         version: cap.version + 1,
         input_schema: toolInput.input_schema,
+        required_secrets: (toolInput.required_secrets as Array<{ name: string; description: string }>) ?? [],
         created_at: new Date(cap.created_at).toISOString(),
         updated_at: new Date().toISOString(),
       }
