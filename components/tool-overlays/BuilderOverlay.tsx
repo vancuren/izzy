@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { BuilderStatus } from '@/lib/agent/use-agent'
 
 interface Props {
@@ -7,11 +8,36 @@ interface Props {
 }
 
 export function BuilderOverlay({ status }: Props) {
+  const [secretValue, setSecretValue] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSaveSecret = async () => {
+    if (!secretValue.trim() || !status.secretRequest || !status.capabilityId) return
+    setSaving(true)
+    try {
+      await fetch('/api/capabilities/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          capabilityId: status.capabilityId,
+          buildId: status.buildId,
+          name: status.secretRequest.name,
+          value: secretValue.trim(),
+        }),
+      })
+      setSecretValue('')
+    } catch {
+      // Error handling — will show in builder progress
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Status indicator */}
       <div className="flex items-center gap-2.5">
-        {status.state === 'building' && (
+        {(status.state === 'building' || status.state === 'secret_request') && (
           <div
             className="w-4 h-4 border-2 rounded-full animate-spin"
             style={{
@@ -42,10 +68,62 @@ export function BuilderOverlay({ status }: Props) {
         )}
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           {status.state === 'building' && 'Building capability...'}
+          {status.state === 'secret_request' && 'Secret needed'}
           {status.state === 'complete' && `Built: ${status.capabilityName}`}
           {status.state === 'error' && 'Build failed'}
         </span>
       </div>
+
+      {/* Secret request form */}
+      {status.state === 'secret_request' && status.secretRequest && (
+        <div
+          className="px-3.5 py-3 rounded-xl border space-y-2.5"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--accent-violet) 5%, transparent)',
+            borderColor: 'color-mix(in srgb, var(--accent-violet) 15%, transparent)',
+          }}
+        >
+          <div>
+            <p className="text-xs font-medium font-mono" style={{ color: 'var(--accent-violet)', opacity: 0.8 }}>
+              {status.secretRequest.name}
+            </p>
+            <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {status.secretRequest.description}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={secretValue}
+              onChange={(e) => setSecretValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveSecret()
+              }}
+              placeholder="Paste secret here..."
+              className="flex-1 px-3 py-2 rounded-lg text-xs font-mono outline-none
+                focus-visible:ring-2 focus-visible:ring-[var(--accent-violet)]"
+              style={{
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)',
+              }}
+              autoFocus
+            />
+            <button
+              onClick={handleSaveSecret}
+              disabled={!secretValue.trim() || saving}
+              className="px-3 py-2 rounded-lg text-xs font-medium transition-opacity
+                disabled:opacity-40"
+              style={{
+                backgroundColor: 'var(--accent-violet)',
+                color: '#fff',
+              }}
+            >
+              {saving ? '...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Progress detail */}
       {status.state === 'building' && (
