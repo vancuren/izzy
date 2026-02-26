@@ -145,12 +145,10 @@ async function triggerBuilder(
   const name = requestCall.input.name as string
 
   // Extract the capability ID from the tool result
-  let capabilityId = ''
+  let capabilityId: string | undefined
   try {
     const parsed = JSON.parse(requestCall.result)
-    if (parsed.capability_id) {
-      capabilityId = parsed.capability_id
-    }
+    capabilityId = parsed.capability_id
   } catch {
     // Not JSON, ignore
   }
