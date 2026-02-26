@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const vid = voiceId ?? VOICE_ID
 
   const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${vid}/stream`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${vid}/stream?output_format=pcm_24000`,
     {
       method: 'POST',
       headers: {
@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         text,
         model_id: MODEL_ID,
-        output_format: 'pcm_24000',
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.75,
