@@ -1,6 +1,6 @@
 export type QueueDirection = 'to_user' | 'to_builder'
 
-export type QueueMessageType = 'question' | 'answer' | 'progress' | 'complete' | 'error'
+export type QueueMessageType = 'question' | 'answer' | 'progress' | 'complete' | 'error' | 'secret_request' | 'secret_response'
 
 export interface QueueMessage {
   id: string
@@ -36,4 +36,14 @@ export interface CompletePayload {
 export interface ErrorPayload {
   error: string
   recoverable: boolean
+}
+
+export interface SecretRequestPayload {
+  name: string
+  description: string
+}
+
+export interface SecretResponsePayload {
+  name: string
+  saved: boolean
 }
