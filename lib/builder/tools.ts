@@ -119,7 +119,9 @@ export const BUILDER_TOOLS: Anthropic.Messages.Tool[] = [
 export interface BuilderToolContext {
   sandbox: Sandbox
   buildId: string
+  /** Set by register_capability handler when build succeeds — triggers loop exit */
   capabilityId?: string
+  /** Pre-created catalog entry ID from request_capability — used for secret association */
   catalogCapabilityId?: string
 }
 

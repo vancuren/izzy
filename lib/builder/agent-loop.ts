@@ -11,7 +11,7 @@ const MAX_ITERATIONS = 25
 
 export interface BuildRequest {
   buildId: string
-  capabilityId: string
+  capabilityId?: string
   description: string
 }
 

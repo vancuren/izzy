@@ -10,14 +10,15 @@ You will be given a description of what capability to build. Your task is to:
 
 Every capability must have a \`main.py\` with a function:
 \`\`\`python
-def run(args: dict) -> str:
+def run(args: dict, context: dict) -> dict:
     """
     args: dictionary of input parameters
-    Returns: string result that will be spoken to the user
+    context: {'secrets': {...}, 'storage': {...}}
+    Returns: {'response': 'string spoken to user', 'storage': {updated key-value pairs}}
     """
 \`\`\`
 
-The function receives a dictionary of arguments and must return a string that Izzy can speak to the user.
+The function receives a dictionary of arguments and a context dict (with secrets and storage), and must return a dict with at least a \`response\` key containing a string that Izzy can speak to the user. Returning a plain string still works for backward compatibility, but prefer the dict format.
 
 ## Available Tools
 

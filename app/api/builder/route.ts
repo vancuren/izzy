@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   // Fire and forget — the builder runs in the background.
   // Results are communicated via the builder_queue table.
-  runBuilderLoop({ buildId, capabilityId: capabilityId ?? '', description }).catch((err) => {
+  runBuilderLoop({ buildId, capabilityId: capabilityId ?? undefined, description }).catch((err) => {
     console.error('Builder loop failed:', err)
   })
 

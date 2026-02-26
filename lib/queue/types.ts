@@ -41,6 +41,7 @@ export interface ErrorPayload {
 export interface SecretRequestPayload {
   name: string
   description: string
+  capabilityId?: string
 }
 
 export interface SecretResponsePayload {
