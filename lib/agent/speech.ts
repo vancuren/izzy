@@ -10,17 +10,6 @@ export function createSpeechRecognition(): SpeechRecognition | null {
   return recognition
 }
 
-export function speak(text: string): Promise<void> {
-  return new Promise((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 1.0
-    utterance.pitch = 1.0
-    utterance.onend = () => resolve()
-    utterance.onerror = () => resolve()
-    speechSynthesis.speak(utterance)
-  })
-}
-
 export function createAudioAnalyser(): {
   analyser: AnalyserNode
   getLevel: () => number
