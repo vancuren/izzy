@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AgentContext, AgentEvent, transition, createInitialContext } from './state-machine'
 import { createSpeechRecognition, speak, createAudioAnalyser } from './speech'
-import type { ToolStreamEvent, ToolEvent } from '@/lib/tools/stream-types'
+import type { ToolEvent } from '@/lib/tools/stream-types'
 
 const IDLE_TIMEOUT_MS = parseInt(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS ?? '300000', 10)
 
