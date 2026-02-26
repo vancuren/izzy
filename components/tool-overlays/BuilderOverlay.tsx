@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { BuilderStatus } from '@/lib/agent/use-agent'
 
 interface Props {
@@ -11,11 +11,17 @@ export function BuilderOverlay({ status }: Props) {
   const [secretValue, setSecretValue] = useState('')
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    if (status.state === 'secret_request') {
+      setSecretValue('')
+    }
+  }, [status.state, status.secretRequest?.name])
+
   const handleSaveSecret = async () => {
     if (!secretValue.trim() || !status.secretRequest || !status.capabilityId) return
     setSaving(true)
     try {
-      await fetch('/api/capabilities/secrets', {
+      const res = await fetch('/api/capabilities/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -25,6 +31,11 @@ export function BuilderOverlay({ status }: Props) {
           value: secretValue.trim(),
         }),
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        console.error('[BuilderOverlay] Failed to save secret:', body.error ?? `HTTP ${res.status}`)
+        return
+      }
       setSecretValue('')
     } catch {
       // Error handling — will show in builder progress

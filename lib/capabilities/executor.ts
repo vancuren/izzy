@@ -113,7 +113,7 @@ else:
       const parsed = JSON.parse(rawResult)
       result = parsed.response ?? rawResult
       // Save storage updates if present
-      if (parsed.storage && typeof parsed.storage === 'object') {
+      if (parsed.storage && typeof parsed.storage === 'object' && !Array.isArray(parsed.storage)) {
         setStorage(input.capability_id, parsed.storage)
       }
     } catch {
