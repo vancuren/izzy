@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutes max for the API route
 
 export async function POST(req: Request) {
-  const { buildId: providedBuildId, description } = await req.json()
+  const { buildId: providedBuildId, capabilityId, description } = await req.json()
 
   if (!description || typeof description !== 'string') {
     return Response.json({ error: 'description is required' }, { status: 400 })
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   // Fire and forget — the builder runs in the background.
   // Results are communicated via the builder_queue table.
-  runBuilderLoop({ buildId, description }).catch((err) => {
+  runBuilderLoop({ buildId, capabilityId: capabilityId ?? '', description }).catch((err) => {
     console.error('Builder loop failed:', err)
   })
 

@@ -11,6 +11,7 @@ const MAX_ITERATIONS = 25
 
 export interface BuildRequest {
   buildId: string
+  capabilityId: string
   description: string
 }
 
@@ -30,6 +31,7 @@ export async function runBuilderLoop(request: BuildRequest): Promise<BuildResult
     const ctx: BuilderToolContext = {
       sandbox,
       buildId: request.buildId,
+      catalogCapabilityId: request.capabilityId,
     }
 
     // 2. Initialize conversation

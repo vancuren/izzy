@@ -144,11 +144,23 @@ async function triggerBuilder(
   const description = requestCall.input.description as string
   const name = requestCall.input.name as string
 
+  // Extract the capability ID from the tool result
+  let capabilityId = ''
+  try {
+    const parsed = JSON.parse(requestCall.result)
+    if (parsed.capability_id) {
+      capabilityId = parsed.capability_id
+    }
+  } catch {
+    // Not JSON, ignore
+  }
+
   // Dynamic import to avoid loading e2b at module init time
   const { runBuilderLoop } = await import('@/lib/builder/agent-loop')
 
   runBuilderLoop({
     buildId,
+    capabilityId,
     description: `Build a capability called "${name}": ${description}`,
   }).catch((err) => {
     console.error('Builder loop failed:', err)
