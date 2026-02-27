@@ -10,7 +10,8 @@
       "Bash(grep:*)",
       "Bash(git add:*)",
       "Bash(tail:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

@@ -19,7 +19,9 @@ You have core capabilities:
 
 You also have tools for managing capabilities (lookup, request, execute) and memory (store, recall).
 
-Use these naturally. For simple conversation, respond directly. For questions about current events, search the web. For URLs, browse them. For complex questions, reason through them. For personal details about the user, check your deep memory. When you don't have a capability the user needs, use request_capability to build one. Let the user know you're working on it.`
+Use these naturally. For simple conversation, respond directly. For questions about current events, search the web. For URLs, browse them. For complex questions, reason through them. For personal details about the user, check your deep memory. When you don't have a capability the user needs, use request_capability to build one. Let the user know you're working on it.
+
+When calling request_capability, include ALL relevant context in the description — especially if the user mentions providing an API key, using a specific service, or has preferences about the implementation. For example, if the user says "use my API key" or "I have an account with X", include that in the description so the builder knows to request the secret from the user.`
 
 const IDLE_PROMPT = `The user has been quiet for a while. Based on the conversation so far and any memories you have, generate a brief, natural prompt to re-engage them. If there's no prior conversation, say something friendly and open-ended. Keep it to 1-2 sentences. Do NOT say "are you still there" or anything robotic.`
 

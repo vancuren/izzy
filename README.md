@@ -1,10 +1,17 @@
-# IzzyClaude
+# Izzy
 
 **A voice-first AI agent that writes its own tools.**
 
-IzzyClaude is an always-on voice companion that starts with a small set of primitives and dynamically builds new capabilities at runtime. Ask for the weather, it writes the weather tool. Ask it to send an email, it builds that too. Each tool is tested in a sandbox, saved to a catalog, and reused on future requests. Over time, the agent's toolset becomes uniquely shaped by how you use it.
+Izzy is an always-on voice companion that starts with a small set of primitives and dynamically builds new capabilities at runtime. Ask for the weather, it writes the weather tool. Ask it to send an email, it builds that too. Each tool is tested in a sandbox, saved to a catalog, and reused on future requests. Over time, the agent's toolset becomes uniquely shaped by how you use it.
 
-Built with [Claude Code](https://claude.ai/code) during the "Built with Claude Code Hackathon".
+Built with [Claude Code](https://claude.ai/code) during the "Built with Claude Code Opus 4.6 Hackathon".
+
+<!-- Add an image here -->
+Checkout the demo here: https://youtu.be/XtdLzGeoDsA
+
+
+![The Opus 4.6 self improving agent architecture/framework](./Architecture.jpeg)
+
 
 ---
 
@@ -18,7 +25,7 @@ Most agent frameworks require developers to anticipate every tool upfront. You w
 
 ## The Approach
 
-IzzyClaude flips the model: **bootstrap with primitives, build on demand.**
+Izzy flips the model: **bootstrap with primitives, build on demand.**
 
 The agent starts with a few built-in tools (web search, URL reading, memory, reasoning, and capability management). When it encounters a request it can't handle, it dispatches a Builder subagent that writes the tool, tests it, and registers it — all while the main conversation continues.
 
@@ -173,7 +180,7 @@ States map to UI behavior: `listening` activates the mic, `thinking` shows tool 
 
 ### Memory System
 
-IzzyClaude remembers things about users across conversations:
+Izzy remembers things about users across conversations:
 
 - **Two tiers**: `short_term` (2% decay per cycle) and `long_term` (0.5% decay per cycle)
 - **Scoring**: Combines base priority + tag matches + content relevance + recency boost
@@ -290,7 +297,7 @@ The lazy loading pattern (catalog summary in system prompt → lookup by keyword
 ## Future Directions
 
 - **Capability versioning and rollback** — The schema already has `version`, but the upgrade/rollback flow isn't built yet
-- **Capability sharing** — Export/import capability bundles between IzzyClaude instances
+- **Capability sharing** — Export/import capability bundles between Izzy instances
 - **Full-text search** — Replace keyword-based memory search with SQLite FTS5
 - **Capability composition** — Let the agent chain multiple capabilities in a single execution
 - **Remote storage** — Move capability files from local filesystem to S3/R2 for deployment
